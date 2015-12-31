@@ -62,12 +62,37 @@ public class DuoShibboleth {
         request.signRequest(ikey, skey);
         return request.executeHttpRequest();
     }
+
+    // Quick and dirty replacement for multi-context-broker functionality.
+    // If this web page returns a 200 code, require Duo, else not.
+    private Response sendIsDuoUser(String username) throws Exception {
+        Http request = new Http("POST", "login.carleton.edu", "/isDuoUser.php", 10);
+        request.addParam("username", username);
+        return request.executeHttpRequest();
+    }
+
     
     public String performPreauth(String failmode) throws Exception {
         if (failmode.equals("secure")) {
             return "auth";
         } else if (!failmode.equals("safe")) {
             throw new IllegalArgumentException("Failmode must be one of either safe or secure.");
+        }
+
+        // Make a call to a local page that returns 200 OK for Duo users and 418 "I'm a teapot" if not.
+        try {
+            Response isDuoUserResponse = sendIsDuoUser(username);
+            int isDuoStatusCode = isDuoUserResponse.code();
+            if (isDuoStatusCode == 200) {
+                log.debug("isDuoUserResponse positive for user:" + username);
+            } else if (isDuoStatusCode == 418) {
+                log.debug("isDuoUserResponse negative for user:" + username);
+                return "allow";
+            } else {
+                log.warn("isDuoUserResponse unexpected response for user:" + username);
+            }
+        } catch (java.io.IOException e) {
+            log.warn("isDuoUserResponse failed for user:" + username);
         }
 
         // Check if Duo authentication is even necessary by calling preauth
