@@ -79,17 +79,17 @@ public class DuoShibboleth {
             throw new IllegalArgumentException("Failmode must be one of either safe or secure.");
         }
 
-        // Make a call to a local page that returns 200 OK for Duo users and 418 "I'm a teapot" if not.
+        // Make a call to a local page that returns 200 OK for Duo users and 203 "non-authoritative" if not.
         try {
             Response isDuoUserResponse = sendIsDuoUser(username);
             int isDuoStatusCode = isDuoUserResponse.code();
             if (isDuoStatusCode == 200) {
-                log.debug("isDuoUserResponse positive for user:" + username);
-            } else if (isDuoStatusCode == 418) {
-                log.debug("isDuoUserResponse negative for user:" + username);
+                log.warn("isDuoUserResponse positive (200) for user:" + username);
+            } else if (isDuoStatusCode == 203) {
+                log.warn("isDuoUserResponse negative (203) for user:" + username);
                 return "allow";
             } else {
-                log.warn("isDuoUserResponse unexpected response for user:" + username);
+                log.warn("isDuoUserResponse unexpected response (" + isDuoStatusCode + ") for user:" + username);
             }
         } catch (java.io.IOException e) {
             log.warn("isDuoUserResponse failed for user:" + username);
